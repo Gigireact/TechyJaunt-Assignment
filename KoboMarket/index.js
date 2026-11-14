@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const app = express();
 const userRoutes = require("./src/routes/user.routes");
+const vendorRoutes = require("./src/routes/vendor.routes");
 
 const PORT = process.env.PORT || 3000;
 
@@ -19,6 +20,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/vendor", vendorRoutes);
 
 
 app.listen(PORT, () => {

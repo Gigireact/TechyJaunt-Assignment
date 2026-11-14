@@ -46,43 +46,65 @@ const signUp = async (req, res) => {
   }
 };
 
+
 const login = async (req, res) => {
   const { email, password } = req.body;
+
   try {
-    const user = await User.findOne({ email }).select("+password");    
+    const user = await User.findOne({ email }).select("+password");
+
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
 
     if (!user.password) {
-      return res.status(400).json({ message: "This account uses Google sign-in" });
+      return res.status(400).json({
+        message: "This account uses Google sign-in",
+      });
     }
 
     if (!user.isVerified) {
-      return res.status(400).json({ message: "User is not verified" });
+      return res.status(400).json({
+        message: "User is not verified",
+      });
     }
 
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    const isPasswordCorrect = await bcrypt.compare(
+      password,
+      user.password
+    );
+
     if (!isPasswordCorrect) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" },
+    // Generate access token
+    const accessToken = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        roles: user.roles,
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "15m" }
     );
 
     await sendLoginAlertEmail(user, new Date().toUTCString());
 
-    return res
-      .status(200)
-      .json({ message: "Login successful", user: toPublicUser(user), token });
+    return res.status(200).json({
+      message: "Login successful",
+      user: toPublicUser(user),
+      accessToken,
+    });
+
   } catch (e) {
     console.log(e);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
+
 
 const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
@@ -199,6 +221,7 @@ const resetPassword = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 module.exports = {
   signUp,
