@@ -8,6 +8,8 @@ const app = express();
 const userRoutes = require("./src/routes/user.routes");
 const vendorRoutes = require("./src/routes/vendor.routes");
 const adminRoutes = require("./src/routes/admin.routes");
+const productRoutes = require("./src/routes/product.routes");
+const cartRoutes = require("./src/routes/cart.routes");
 
 const PORT = process.env.PORT || 3000;
 
@@ -23,6 +25,8 @@ app.get("/", (req, res) => {
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/vendor", vendorRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/product", productRoutes);
+app.use("/api/v1/cart", cartRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
