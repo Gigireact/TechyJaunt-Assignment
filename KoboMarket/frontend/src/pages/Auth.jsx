@@ -80,29 +80,51 @@ export function Login() {
     </Shell>
   );
 }
+
 export function Register() {
   const nav = useNavigate(),
-    [f, setF] = useState({ name: "", email: "", password: "" }),
+    [f, setF] = useState({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+    }),
     [l, setL] = useState(false);
+
   const go = async (e) => {
     e.preventDefault();
     setL(true);
+
     const ok = await act(
-      () => api("/auth/register", { method: "POST", body: f }).then(() => true),
-      "Account created. Check your email to verify.",
+      () =>
+        api("/user/signup", {
+          method: "POST",
+          body: f,
+        }).then(() => true),
+      "Account created. Check your email for your verification code.",
     );
+
     setL(false);
-    ok && nav("/verify-email");
+    ok && nav(`/verify-email?email=${encodeURIComponent(f.email)}`);
   };
+
   return (
     <Shell title="Create your account" sub="Takes less than a minute">
       <form onSubmit={go} className="space-y-4">
         <Field
-          label="Full name"
+          label="First name"
           required
-          value={f.name}
-          onChange={(e) => setF({ ...f, name: e.target.value })}
+          value={f.firstName}
+          onChange={(e) => setF({ ...f, firstName: e.target.value })}
         />
+
+        <Field
+          label="Last name"
+          required
+          value={f.lastName}
+          onChange={(e) => setF({ ...f, lastName: e.target.value })}
+        />
+
         <Field
           label="Email"
           type="email"
@@ -110,6 +132,7 @@ export function Register() {
           value={f.email}
           onChange={(e) => setF({ ...f, email: e.target.value })}
         />
+
         <Field
           label="Password"
           type="password"
@@ -118,10 +141,12 @@ export function Register() {
           value={f.password}
           onChange={(e) => setF({ ...f, password: e.target.value })}
         />
+
         <Button loading={l} className="w-full">
           Sign up
         </Button>
       </form>
+
       <p className="mt-4 text-sm">
         Have an account?{" "}
         <Link to="/login" className="text-kobo-600">
@@ -131,67 +156,99 @@ export function Register() {
     </Shell>
   );
 }
+
 export function Verify() {
-  const [sp] = useSearchParams(),
-    [token, setT] = useState(sp.get("token") || ""),
-    nav = useNavigate();
+  const [sp] = useSearchParams();
+  const [email, setEmail] = useState(sp.get("email") || "");
+  const [otp, setOtp] = useState("");
+  const nav = useNavigate();
+
   const go = async (e) => {
     e.preventDefault();
-    (await act(
+
+    const ok = await act(
       () =>
-        api("/auth/verify-email", { method: "POST", body: { token } }).then(
-          () => true,
-        ),
-      "Email verified",
-    )) && nav("/login");
+        api("/user/verify-otp", {
+          method: "POST",
+          body: { email, otp },
+        }).then(() => true),
+      "Email verified successfully",
+    );
+
+    ok && nav("/login");
   };
+
   return (
-    <Shell title="Verify your email" sub="Paste the token from your email">
+    <Shell title="Verify your email" sub="Enter the verification code sent to your email">
       <form onSubmit={go} className="space-y-4">
         <Field
-          label="Token"
+          label="Email"
+          type="email"
           required
-          value={token}
-          onChange={(e) => setT(e.target.value)}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
+
+        <Field
+          label="Verification code"
+          required
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+        />
+
         <Button className="w-full">Verify email</Button>
       </form>
     </Shell>
   );
 }
+
 export function Forgot() {
-  const [email, setE] = useState(""),
-    [token, setT] = useState(""),
-    [pw, setP] = useState(""),
-    [step, setS] = useState(1);
+  const [email, setE] = useState("");
+  const [otp, setOtp] = useState("");
+  const [pw, setP] = useState("");
+  const [step, setS] = useState(1);
+
   const send = async (e) => {
     e.preventDefault();
-    (await act(
+
+    const ok = await act(
       () =>
-        api("/auth/forgot-password", { method: "POST", body: { email } }).then(
-          () => true,
-        ),
-      "Reset email sent",
-    )) && setS(2);
+        api("/user/forgot-password", {
+          method: "POST",
+          body: { email },
+        }).then(() => true),
+      "If your account exists, a reset code has been sent.",
+    );
+
+    ok && setS(2);
   };
+
   const reset = async (e) => {
     e.preventDefault();
-    (await act(
+
+    const ok = await act(
       () =>
-        api("/auth/reset-password", {
+        api("/user/reset-password", {
           method: "POST",
-          body: { token, password: pw },
+          body: {
+            email,
+            otp,
+            newPassword: pw,
+          },
         }).then(() => true),
       "Password updated",
-    )) && setS(1);
+    );
+
+    ok && setS(1);
   };
+
   return (
     <Shell
       title="Reset password"
       sub={
         step === 1
-          ? "We will email you a reset token"
-          : "Enter the token and a new password"
+          ? "We will email you a reset code"
+          : "Enter the code and your new password"
       }
     >
       {step === 1 ? (
@@ -203,16 +260,17 @@ export function Forgot() {
             value={email}
             onChange={(e) => setE(e.target.value)}
           />
-          <Button className="w-full">Send reset token</Button>
+          <Button className="w-full">Send reset code</Button>
         </form>
       ) : (
         <form onSubmit={reset} className="space-y-4">
           <Field
-            label="Token"
+            label="Verification code"
             required
-            value={token}
-            onChange={(e) => setT(e.target.value)}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
           />
+
           <Field
             label="New password"
             type="password"
@@ -221,9 +279,11 @@ export function Forgot() {
             value={pw}
             onChange={(e) => setP(e.target.value)}
           />
+
           <Button className="w-full">Update password</Button>
         </form>
       )}
+
       <Link to="/login" className="mt-4 block text-sm text-kobo-600">
         Back to log in
       </Link>

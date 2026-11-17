@@ -1,6 +1,7 @@
 const express = require('express');
 const connectDB = require("./src/configs/db");
 const morgan = require("morgan");
+const cors = require("cors");
 
 require("dotenv").config();
 
@@ -14,6 +15,22 @@ const cartRoutes = require("./src/routes/cart.routes");
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim());
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests without an origin, such as Postman
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+}));
 app.use(morgan("dev"));
 
 connectDB();
