@@ -21,7 +21,6 @@ const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests without an origin, such as Postman
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }

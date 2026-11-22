@@ -282,12 +282,13 @@ const deleteProduct = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, page: pageQuery, limit: limitQuery } =
+    req.validated?.query || req.query;
 
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const page = Math.max(1, parseInt(pageQuery, 10) || 1);
     const limit = Math.min(
       50,
-      Math.max(1, parseInt(req.query.limit, 10) || 10)
+      Math.max(1, parseInt(limitQuery, 10) || 10)
     );
 
     const skip = (page - 1) * limit;
