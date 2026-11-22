@@ -47,6 +47,7 @@ const signUp = async (req, res) => {
 };
 
 
+
 const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -54,7 +55,7 @@ const login = async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res.status(400).json({ message: "User not found" });
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
     if (!user.password) {
@@ -75,10 +76,15 @@ const login = async (req, res) => {
     );
 
     if (!isPasswordCorrect) {
-      return res.status(400).json({ message: "Invalid password" });
+      return res.status(400).json({
+        message: "Invalid email or password",
+      });
     }
 
-    // Generate access token
+    if (!process.env.ACCESS_TOKEN_SECRET) {
+      throw new Error("ACCESS_TOKEN_SECRET is missing");
+    }
+
     const accessToken = jwt.sign(
       {
         id: user._id,
@@ -89,7 +95,13 @@ const login = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    await sendLoginAlertEmail(user, new Date().toUTCString());
+    // Login notification is optional.
+    // An email failure must not prevent successful login.
+    try {
+      await sendLoginAlertEmail(user, new Date().toUTCString());
+    } catch (emailError) {
+      console.error("Login notification email failed:", emailError.message);
+    }
 
     return res.status(200).json({
       message: "Login successful",
@@ -97,13 +109,14 @@ const login = async (req, res) => {
       accessToken,
     });
 
-  } catch (e) {
-    console.log(e);
+  } catch (error) {
+    console.error("Login error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });
   }
 };
+
 
 
 const verifyOtp = async (req, res) => {
