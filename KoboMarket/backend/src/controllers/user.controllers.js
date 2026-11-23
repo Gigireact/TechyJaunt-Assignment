@@ -119,32 +119,64 @@ const login = async (req, res) => {
 
 
 
+
 const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
+
   try {
     const user = await User.findOne({ email });
+
     if (!user || user.isVerified) {
-      return res.status(400).json({ message: "Invalid or expired code" });
+      return res.status(400).json({
+        message: "Invalid or expired code",
+      });
     }
 
     const result = checkOtp(user, String(otp), "verify-email");
+
     if (!result.ok) {
       if (result.failed) {
         await user.save();
       }
-      return res.status(400).json({ message: result.error });
+
+      return res.status(400).json({
+        message: result.error,
+      });
     }
 
     user.isVerified = true;
     clearOtp(user);
     await user.save();
 
-    return res.status(200).json({ message: "Email verified successfully" });
-  } catch (e) {
-    console.log(e);
-    return res.status(500).json({ message: "Internal server error" });
+    if (!process.env.ACCESS_TOKEN_SECRET) {
+      throw new Error("ACCESS_TOKEN_SECRET is missing");
+    }
+
+    const accessToken = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        roles: user.roles,
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    return res.status(200).json({
+      message: "Email verified successfully",
+      user: toPublicUser(user),
+      accessToken,
+    });
+
+  } catch (error) {
+    console.error("Email verification error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
+
 
 const resendOtp = async (req, res) => {
   const { email } = req.body;

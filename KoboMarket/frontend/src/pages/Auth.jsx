@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { api } from "../api/client";
+import { api, tokens } from "../api/client";
 import { Button, Field, Card, act, toast } from "../components/ui";
 
 const Shell = ({ title, sub, children }) => (
@@ -157,29 +157,41 @@ export function Register() {
   );
 }
 
+
 export function Verify() {
   const [sp] = useSearchParams();
   const [email, setEmail] = useState(sp.get("email") || "");
   const [otp, setOtp] = useState("");
+  const [loading, setLoading] = useState(false);
   const nav = useNavigate();
 
   const go = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
-    const ok = await act(
-      () =>
-        api("/user/verify-otp", {
-          method: "POST",
-          body: { email, otp },
-        }).then(() => true),
-      "Email verified successfully",
-    );
+    const ok = await act(async () => {
+      const data = await api("/user/verify-otp", {
+        method: "POST",
+        body: { email, otp },
+      });
 
-    ok && nav("/login");
+      tokens.set(data.accessToken);
+      return true;
+    }, "Email verified successfully");
+
+    setLoading(false);
+
+    if (ok) {
+      nav("/");
+      window.location.reload();
+    }
   };
 
   return (
-    <Shell title="Verify your email" sub="Enter the verification code sent to your email">
+    <Shell
+      title="Verify your email"
+      sub="Enter the verification code sent to your email"
+    >
       <form onSubmit={go} className="space-y-4">
         <Field
           label="Email"
@@ -196,11 +208,14 @@ export function Verify() {
           onChange={(e) => setOtp(e.target.value)}
         />
 
-        <Button className="w-full">Verify email</Button>
+        <Button loading={loading} className="w-full">
+          Verify email
+        </Button>
       </form>
     </Shell>
   );
 }
+
 
 export function Forgot() {
   const [email, setE] = useState("");
