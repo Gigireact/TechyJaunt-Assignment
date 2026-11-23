@@ -1,3 +1,4 @@
+
 const toPublicUser = (user) => {
   const picture = user.profilePictureUrl
     ? {
@@ -24,7 +25,7 @@ const toPublicUser = (user) => {
     phone: user.phone || null,
     address,
     profilePicture: picture,
-    role: user.role,
+    roles: user.roles || [],
     isVerified: user.isVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,

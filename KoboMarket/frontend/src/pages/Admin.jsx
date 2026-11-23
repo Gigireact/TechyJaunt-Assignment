@@ -30,80 +30,152 @@ const Tabs = ({ tabs, v, set }) => (
   </div>
 );
 
-function Users() {
-  const [q, setQ] = useState(""),
-    { data, loading, reload } = useFetch("/admin/users" + qs({ q })),
-    [led, setLed] = useState(null);
+
+function VendorApplications() {
+  const { data, loading, reload } = useFetch("/admin/vendors/pending");
+  const [busy, setBusy] = useState({});
+  const [rejectionReasons, setRejectionReasons] = useState({});
+
+  const applications = data?.applications || [];
+
+  const approve = async (application) => {
+    const id = application._id;
+
+    setBusy((prev) => ({ ...prev, [id]: true }));
+
+    const result = await act(
+      () =>
+        api(`/admin/vendors/${id}/approve`, {
+          method: "PATCH",
+        }),
+      "Vendor application approved"
+    );
+
+    setBusy((prev) => ({ ...prev, [id]: false }));
+
+    if (result) reload();
+  };
+
+  const reject = async (application) => {
+    const id = application._id;
+    const rejectionReason = rejectionReasons[id]?.trim();
+
+    if (!rejectionReason) {
+      return act(
+        () => Promise.reject(new Error("Please provide a rejection reason"))
+      );
+    }
+
+    setBusy((prev) => ({ ...prev, [id]: true }));
+
+    const result = await act(
+      () =>
+        api(`/admin/vendors/${id}/reject`, {
+          method: "PATCH",
+          body: { rejectionReason },
+        }),
+      "Vendor application rejected"
+    );
+
+    setBusy((prev) => ({ ...prev, [id]: false }));
+
+    if (result) reload();
+  };
+
+  if (loading) return <Loading />;
+
   return (
-    <>
-      <div className="mb-4 max-w-sm">
-        <Field
-          label="Search users"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Name or email"
-        />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-lg">Vendor applications</h2>
+          <p className="text-sm text-ink/60">
+            Review and manage applications from prospective vendors.
+          </p>
+        </div>
+
+        <Badge>{applications.length} pending</Badge>
       </div>
-      {loading ? (
-        <Loading />
+
+      {!applications.length ? (
+        <Empty
+          title="No pending applications"
+          hint="New vendor applications will appear here."
+        />
       ) : (
-        <Card className="divide-y divide-ink/10 !p-0">
-          {list(data).map((u) => (
-            <div
-              key={u._id || u.id}
-              className="flex flex-wrap items-center justify-between gap-3 p-4"
-            >
-              <div>
-                <p className="font-medium">{u.name}</p>
-                <p className="text-sm text-ink/60">{u.email}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {u.vendor?.status === "pending" && (
-                  <Button
-                    onClick={() =>
-                      act(
-                        () =>
-                          api(
-                            `/admin/vendors/${u.vendor._id || u._id}/approve`,
-                            { method: "PATCH" },
-                          ),
-                        "Vendor approved",
-                      ).then(reload)
+        <div className="space-y-3">
+          {applications.map((application) => {
+            const applicant = application.user;
+            const id = application._id;
+
+            return (
+              <Card key={id}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-lg">
+                      {application.storeName}
+                    </h3>
+
+                    <p className="text-sm text-ink/60">
+                      {applicant?.firstName} {applicant?.lastName}
+                    </p>
+
+                    <p className="text-sm text-ink/60">
+                      {applicant?.email}
+                    </p>
+
+                    <p className="mt-3 text-sm">
+                      {application.description}
+                    </p>
+
+                    <p className="mt-2 text-xs text-ink/50">
+                      Applied:{" "}
+                      {new Date(application.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <Badge>Pending</Badge>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <Field
+                    label="Reason for rejection (required to reject)"
+                    value={rejectionReasons[id] || ""}
+                    onChange={(e) =>
+                      setRejectionReasons((prev) => ({
+                        ...prev,
+                        [id]: e.target.value,
+                      }))
                     }
-                  >
-                    Approve vendor
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={() => setLed(u.walletId || u._id)}
-                >
-                  Ledger
-                </Button>
-                <Button
-                  variant={u.frozen ? "primary" : "danger"}
-                  onClick={() =>
-                    act(
-                      () =>
-                        api(`/admin/users/${u._id || u.id}/freeze`, {
-                          method: "PATCH",
-                          body: { frozen: !u.frozen },
-                        }),
-                      u.frozen ? "Account unfrozen" : "Account frozen",
-                    ).then(reload)
-                  }
-                >
-                  {u.frozen ? "Unfreeze" : "Freeze"}
-                </Button>
-              </div>
-            </div>
-          ))}
-        </Card>
+                    placeholder="Explain why this application is being rejected"
+                  />
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={!!busy[id]}
+                      onClick={() => approve(application)}
+                    >
+                      {busy[id] ? "Processing..." : "Approve application"}
+                    </Button>
+
+                    <Button
+                      variant="danger"
+                      disabled={!!busy[id] || !rejectionReasons[id]?.trim()}
+                      onClick={() => reject(application)}
+                    >
+                      Reject application
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
-      <Ledger id={led} close={() => setLed(null)} />
-    </>
+    </div>
   );
 }
+
 function Ledger({ id, close }) {
   const { data, loading } = useFetch(
     id ? `/admin/wallets/${id}/ledger` : "/admin/wallets/none/ledger",
@@ -332,25 +404,27 @@ function Settings() {
     </Card>
   );
 }
+
 export default function Admin() {
-  const [t, setT] = useState("reports"),
-    P = {
-      reports: Reports,
-      users: Users,
-      disputes: Disputes,
-      settings: Settings,
-    }[t];
+  const [t, setT] = useState("vendors");
+
+  const P = {
+    vendors: VendorApplications,
+  }[t];
+
   return (
     <>
       <PageHead
         title="Admin"
-        sub="Users, disputes and the health of the ledger."
+        sub="Manage vendor applications and platform operations."
       />
+
       <Tabs
-        tabs={Object.keys({ reports: 1, users: 1, disputes: 1, settings: 1 })}
+        tabs={["vendors"]}
         v={t}
         set={setT}
       />
+
       <P />
     </>
   );
