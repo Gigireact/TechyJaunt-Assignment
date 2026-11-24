@@ -81,31 +81,39 @@ export function Login() {
   );
 }
 
+
 export function Register() {
-  const nav = useNavigate(),
-    [f, setF] = useState({
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-    }),
-    [l, setL] = useState(false);
+  const nav = useNavigate();
+
+  const [f, setF] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+  });
+
+  const [l, setL] = useState(false);
 
   const go = async (e) => {
     e.preventDefault();
     setL(true);
 
-    const ok = await act(
-      () =>
-        api("/user/signup", {
-          method: "POST",
-          body: f,
-        }).then(() => true),
-      "Account created. Check your email for your verification code.",
-    );
+    try {
+      const ok = await act(
+        () =>
+          api("/user/signup", {
+            method: "POST",
+            body: f,
+          }).then(() => true),
+        "Account created! Check your email for the verification code.",
+      );
 
-    setL(false);
-    ok && nav(`/verify-email?email=${encodeURIComponent(f.email)}`);
+      if (ok) {
+        nav(`/verify-email?email=${encodeURIComponent(f.email)}`);
+      }
+    } finally {
+      setL(false);
+    }
   };
 
   return (
@@ -159,10 +167,13 @@ export function Register() {
 
 
 export function Verify() {
+  const { reload } = useAuth();
+
   const [sp] = useSearchParams();
   const [email, setEmail] = useState(sp.get("email") || "");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+
   const nav = useNavigate();
 
   const go = async (e) => {
@@ -215,7 +226,6 @@ export function Verify() {
     </Shell>
   );
 }
-
 
 export function Forgot() {
   const [email, setE] = useState("");

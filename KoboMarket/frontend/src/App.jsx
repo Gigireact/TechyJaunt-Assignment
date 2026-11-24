@@ -9,6 +9,7 @@ import Wallet from "./pages/Wallet";
 import Orders from "./pages/Orders";
 import Vendor from "./pages/Vendor";
 import Admin from "./pages/Admin";
+import Dashboard from "./pages/Dashboard";
 import Notifications from "./pages/Notifications";
 
 const Guard = ({ role, children }) => {
@@ -29,6 +30,14 @@ export default function App() {
         <Route path="/forgot-password" element={<Forgot />} />
         <Route element={<Layout />}>
           <Route index element={<Shop />} />
+          <Route
+            path="dashboard"
+            element={
+              <Guard>
+                <Dashboard />
+              </Guard>
+            }
+          />
           <Route path="products/:slug" element={<Product />} />
           <Route
             path="cart"

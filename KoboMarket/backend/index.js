@@ -11,6 +11,7 @@ const vendorRoutes = require("./src/routes/vendor.routes");
 const adminRoutes = require("./src/routes/admin.routes");
 const productRoutes = require("./src/routes/product.routes");
 const cartRoutes = require("./src/routes/cart.routes");
+const orderRoutes = require("./src/routes/order.routes");
 
 const PORT = process.env.PORT || 3000;
 
@@ -43,6 +44,7 @@ app.use("/api/v1/vendor", vendorRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/product", productRoutes);
 app.use("/api/v1/cart", cartRoutes);
+app.use("/api/v1/orders", orderRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
